@@ -7,6 +7,7 @@
 *.tmp
 *.orig
 ci/
+.github/
 .vscode/
 .idea/
 *.md

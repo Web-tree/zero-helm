@@ -1,0 +1,86 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+    steps:
+      - uses: googleapis/release-please-action@v4
+        id: release
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+  publish:
+    needs: release-please
+    if: needs.release-please.outputs.release_created == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pages: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.release-please.outputs.tag_name }}
+          fetch-depth: 0
+
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+
+      - name: Lint chart
+        run: helm lint . --values ci/test-values.yaml
+
+      - name: Package chart
+        run: helm package . --destination .cr-release-packages
+
+      - name: Upload chart to GitHub Release
+        run: |
+          gh release upload "${{ needs.release-please.outputs.tag_name }}" \
+            .cr-release-packages/*.tgz
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Checkout gh-pages
+        run: |
+          git checkout gh-pages 2>/dev/null || git checkout --orphan gh-pages
+          git rm -rf --ignore-unmatch . 2>/dev/null || true
+          git checkout gh-pages -- index.yaml 2>/dev/null || true
+
+      - name: Download chart from release
+        run: |
+          mkdir -p .cr-release-packages
+          gh release download "${{ needs.release-please.outputs.tag_name }}" \
+            --pattern "*.tgz" --dir .cr-release-packages
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update Helm repo index
+        run: |
+          REPO_URL="https://github.com/${{ github.repository }}/releases/download/${{ needs.release-please.outputs.tag_name }}"
+          if [ -f index.yaml ]; then
+            helm repo index .cr-release-packages --url "$REPO_URL" --merge index.yaml
+          else
+            helm repo index .cr-release-packages --url "$REPO_URL"
+          fi
+          mv .cr-release-packages/index.yaml index.yaml
+          rm -rf .cr-release-packages
+
+      - name: Push index to gh-pages
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add index.yaml
+          git commit -m "Update Helm repo index for ${{ needs.release-please.outputs.tag_name }}"
+          git push origin gh-pages
