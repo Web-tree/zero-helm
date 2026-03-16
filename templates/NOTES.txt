@@ -1,0 +1,43 @@
+{{- if .Values.viewSyncer.enabled }}
+Zero has been deployed in MULTI-NODE mode:
+  - Replication Manager: 1 replica (StatefulSet)
+  - View Syncers: {{ .Values.viewSyncer.replicaCount }} replicas
+{{- else }}
+Zero has been deployed in SINGLE-NODE mode:
+  - Combined zero-cache: 1 replica (StatefulSet)
+{{- end }}
+
+{{- if .Values.ingress.enabled }}
+
+Access Zero via:
+{{- range $host := .Values.ingress.hosts }}
+  {{- range .paths }}
+  http{{ if $.Values.ingress.tls }}s{{ end }}://{{ $host.host }}{{ .path }}
+  {{- end }}
+{{- end }}
+{{- else }}
+
+Access Zero via port-forward:
+{{- if .Values.viewSyncer.enabled }}
+  kubectl port-forward svc/{{ include "zero.viewSyncer.fullname" . }} 4848:{{ .Values.viewSyncer.service.port }}
+{{- else }}
+  kubectl port-forward svc/{{ include "zero.replicationManager.fullname" . }} 4848:4848
+{{- end }}
+
+Then open http://localhost:4848 in your browser.
+{{- end }}
+
+{{- if and .Values.viewSyncer.enabled (not .Values.litestream.backupUrl) }}
+
+WARNING: Litestream backup URL (litestream.backupUrl) is not set.
+  Multi-node mode requires S3 backup for view syncers to bootstrap their replica.
+  Set litestream.backupUrl to an S3-compatible URL (e.g., s3://my-bucket/zero-replica).
+{{- end }}
+
+{{- if not .Values.database.upstreamDb }}
+{{- if not .Values.existingSecrets.database }}
+
+WARNING: No upstream database configured.
+  Set database.upstreamDb or provide existingSecrets.database with ZERO_UPSTREAM_DB key.
+{{- end }}
+{{- end }}

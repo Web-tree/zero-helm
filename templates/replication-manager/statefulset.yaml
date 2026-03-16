@@ -1,0 +1,128 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "zero.replicationManager.fullname" . }}
+  labels:
+    {{- include "zero.replicationManager.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  serviceName: {{ include "zero.replicationManager.fullname" . }}
+  selector:
+    matchLabels:
+      {{- include "zero.replicationManager.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.replicationManager.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "zero.replicationManager.labels" . | nindent 8 }}
+        {{- with .Values.replicationManager.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "zero.serviceAccountName" . }}
+      {{- with .Values.replicationManager.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: zero-replication-manager
+          image: {{ include "zero.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- with .Values.replicationManager.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          ports:
+            - name: change-streamer
+              containerPort: {{ .Values.replicationManager.service.port }}
+              protocol: TCP
+            {{- if not .Values.viewSyncer.enabled }}
+            - name: sync
+              containerPort: 4848
+              protocol: TCP
+            {{- end }}
+          env:
+            {{- include "zero.sharedEnv" . | nindent 12 }}
+            - name: ZERO_REPLICA_FILE
+              value: {{ .Values.replicationManager.replicaFile | quote }}
+            {{- if .Values.viewSyncer.enabled }}
+            - name: ZERO_NUM_SYNC_WORKERS
+              value: "0"
+            {{- end }}
+            {{- if not .Values.viewSyncer.enabled }}
+            - name: ZERO_PORT
+              value: "4848"
+            {{- end }}
+            {{- with .Values.replicationManager.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+            {{- with .Values.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          {{- with .Values.extraEnvFrom }}
+          envFrom:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.replicationManager.livenessProbe }}
+          livenessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.replicationManager.readinessProbe }}
+          readinessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.replicationManager.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: data
+              mountPath: /data
+      {{- if not .Values.replicationManager.persistence.enabled }}
+      volumes:
+        - name: data
+          emptyDir: {}
+      {{- end }}
+      {{- with .Values.replicationManager.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.replicationManager.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.replicationManager.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.replicationManager.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+  {{- if .Values.replicationManager.persistence.enabled }}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+        {{- with .Values.replicationManager.persistence.annotations }}
+        annotations:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+      spec:
+        accessModes:
+          {{- toYaml .Values.replicationManager.persistence.accessModes | nindent 10 }}
+        {{- if .Values.replicationManager.persistence.storageClass }}
+        storageClassName: {{ .Values.replicationManager.persistence.storageClass | quote }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.replicationManager.persistence.size }}
+  {{- else }}
+  {{- /* When persistence is disabled, use emptyDir */}}
+  {{- end }}

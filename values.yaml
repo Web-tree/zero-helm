@@ -1,0 +1,338 @@
+# -- Global image settings for the Rocicorp Zero container
+image:
+  # -- Docker image repository
+  repository: rocicorp/zero
+  # -- Image tag (defaults to Chart.appVersion)
+  tag: ""
+  # -- Image pull policy
+  pullPolicy: IfNotPresent
+
+# -- Image pull secrets for private registries
+imagePullSecrets: []
+
+# -- Override the chart name
+nameOverride: ""
+# -- Override the full release name
+fullnameOverride: ""
+
+# =============================================================================
+# ServiceAccount
+# =============================================================================
+serviceAccount:
+  # -- Create a ServiceAccount
+  create: true
+  # -- Annotations for the ServiceAccount (e.g., eks.amazonaws.com/role-arn for IRSA)
+  annotations: {}
+  # -- Override the ServiceAccount name
+  name: ""
+
+# =============================================================================
+# Shared Zero Configuration
+# =============================================================================
+zero:
+  # -- Unique identifier for the app
+  appId: ""
+  # -- Log level: debug, info, warn, error
+  logLevel: "info"
+  # -- Log format: text or json
+  logFormat: "text"
+  # -- Automatically wipe and resync replica when replication is halted
+  autoReset: ""
+  # -- Symmetric key for JWT verification (deprecated, use OIDC instead)
+  authSecret: ""
+  # -- URL pattern for query API endpoint
+  queryUrl: ""
+  # -- URL pattern for mutation API endpoint
+  mutateUrl: ""
+  # -- API key for authorizing query API calls
+  queryApiKey: ""
+  # -- API key for authorizing mutation API calls
+  mutateApiKey: ""
+  # -- Enable WebSocket per-message deflate compression
+  websocketCompression: ""
+  # -- Node environment (set to "production" to require adminPassword)
+  nodeEnv: "production"
+
+# =============================================================================
+# Database Configuration (shared by both components)
+# =============================================================================
+database:
+  # -- Direct Postgres connection string (required, must not use pgbouncer)
+  upstreamDb: ""
+  # -- Postgres connection string for CVR storage (defaults to upstreamDb)
+  cvrDb: ""
+  # -- Postgres connection string for change log storage (defaults to upstreamDb)
+  changeDb: ""
+  # -- Max connections to upstream database
+  upstreamMaxConns: ""
+  # -- Max connections to CVR database (default: 30)
+  cvrMaxConns: ""
+  # -- Max connections to change database (default: 5)
+  changeMaxConns: ""
+
+# =============================================================================
+# Litestream / S3 Backup (required for multi-node)
+# =============================================================================
+litestream:
+  # -- Backup URL (e.g., s3://my-bucket/zero-replica)
+  backupUrl: ""
+  # -- S3-compatible endpoint URL (for MinIO, etc.)
+  endpoint: ""
+  # -- AWS credentials for S3 access
+  aws:
+    accessKeyId: ""
+    secretAccessKey: ""
+
+# =============================================================================
+# Admin Password
+# =============================================================================
+# -- Admin password for /statz endpoint and inspector (required when nodeEnv=production)
+adminPassword: ""
+
+# =============================================================================
+# Existing Secrets (use instead of chart-managed secrets)
+# =============================================================================
+existingSecrets:
+  # -- Existing Secret with database credentials
+  # Expected keys: ZERO_UPSTREAM_DB, optionally ZERO_CVR_DB, ZERO_CHANGE_DB
+  database: ""
+  # -- Existing Secret with AWS/S3 credentials
+  # Expected keys: AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY
+  aws: ""
+  # -- Existing Secret with admin password
+  # Expected key: ZERO_ADMIN_PASSWORD
+  admin: ""
+  # -- Existing Secret with auth secret
+  # Expected key: ZERO_AUTH_SECRET
+  auth: ""
+
+# =============================================================================
+# Extra Environment Variables (applied to all pods)
+# =============================================================================
+# -- Additional environment variables for all containers
+extraEnv: []
+# - name: CUSTOM_VAR
+#   value: "custom-value"
+
+# -- Additional envFrom sources for all containers
+extraEnvFrom: []
+# - secretRef:
+#     name: my-extra-secret
+
+# =============================================================================
+# Replication Manager
+# =============================================================================
+replicationManager:
+  # -- Path to SQLite replica file inside the container
+  replicaFile: /data/replica.db
+
+  # -- Additional environment variables specific to replication manager
+  extraEnv: []
+
+  # -- Persistent volume for SQLite replica
+  persistence:
+    # -- Enable persistence
+    enabled: true
+    # -- Storage class (empty for default)
+    storageClass: ""
+    # -- Access modes
+    accessModes:
+      - ReadWriteOnce
+    # -- Volume size
+    size: 10Gi
+    # -- Annotations for the PVC
+    annotations: {}
+
+  # -- Resource requests and limits
+  resources: {}
+  #  requests:
+  #    cpu: 250m
+  #    memory: 512Mi
+  #  limits:
+  #    cpu: "1"
+  #    memory: 1Gi
+
+  # -- Node selector
+  nodeSelector: {}
+  # -- Tolerations
+  tolerations: []
+  # -- Affinity rules
+  affinity: {}
+  # -- Topology spread constraints
+  topologySpreadConstraints: []
+
+  # -- Pod annotations
+  podAnnotations: {}
+  # -- Pod labels
+  podLabels: {}
+  # -- Pod security context
+  podSecurityContext: {}
+  # -- Container security context
+  securityContext: {}
+
+  service:
+    # -- Service type
+    type: ClusterIP
+    # -- Change streamer port
+    port: 4849
+    # -- Service annotations
+    annotations: {}
+
+  # -- Liveness probe
+  livenessProbe:
+    httpGet:
+      path: /keepalive
+      port: change-streamer
+    initialDelaySeconds: 15
+    periodSeconds: 20
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+  # -- Readiness probe
+  readinessProbe:
+    httpGet:
+      path: /keepalive
+      port: change-streamer
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+  # -- Pod disruption budget
+  podDisruptionBudget:
+    enabled: false
+    # maxUnavailable: 1
+
+# =============================================================================
+# View Syncer
+# =============================================================================
+viewSyncer:
+  # -- Enable view syncer (false = single-node mode)
+  enabled: true
+
+  # -- Number of replicas (ignored when autoscaling is enabled)
+  replicaCount: 2
+
+  # -- Path to SQLite replica file inside the container
+  replicaFile: /data/zero.db
+
+  # -- Number of sync worker processes (empty for default)
+  numSyncWorkers: ""
+  # -- Max milliseconds for sync worker before yielding
+  yieldThresholdMs: ""
+
+  # -- Additional environment variables specific to view syncer
+  extraEnv: []
+
+  # -- Persistent volume for SQLite replica
+  persistence:
+    # -- Enable persistence (true=StatefulSet with PVC, false=Deployment with emptyDir)
+    enabled: true
+    # -- Storage class (empty for default)
+    storageClass: ""
+    # -- Access modes
+    accessModes:
+      - ReadWriteOnce
+    # -- Volume size
+    size: 10Gi
+    # -- Annotations for the PVC
+    annotations: {}
+
+  # -- Resource requests and limits
+  resources: {}
+
+  # -- Node selector
+  nodeSelector: {}
+  # -- Tolerations
+  tolerations: []
+  # -- Affinity rules
+  affinity: {}
+  # -- Topology spread constraints
+  topologySpreadConstraints: []
+
+  # -- Pod annotations
+  podAnnotations: {}
+  # -- Pod labels
+  podLabels: {}
+  # -- Pod security context
+  podSecurityContext: {}
+  # -- Container security context
+  securityContext: {}
+
+  service:
+    # -- Service type
+    type: ClusterIP
+    # -- Sync port
+    port: 4848
+    # -- Service annotations
+    annotations: {}
+
+  # -- Horizontal pod autoscaler
+  autoscaling:
+    # -- Enable HPA
+    enabled: false
+    # -- Minimum replicas
+    minReplicas: 2
+    # -- Maximum replicas
+    maxReplicas: 10
+    # -- Target CPU utilization percentage
+    targetCPUUtilizationPercentage: 70
+    # -- Target memory utilization percentage (empty to disable)
+    targetMemoryUtilizationPercentage: ""
+    # -- HPA behavior configuration
+    behavior: {}
+
+  # -- Liveness probe
+  livenessProbe:
+    httpGet:
+      path: /keepalive
+      port: sync
+    initialDelaySeconds: 15
+    periodSeconds: 20
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+  # -- Readiness probe
+  readinessProbe:
+    httpGet:
+      path: /keepalive
+      port: sync
+    initialDelaySeconds: 5
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+  # -- Pod disruption budget
+  podDisruptionBudget:
+    enabled: true
+    maxUnavailable: 1
+
+# =============================================================================
+# Ingress (routes to view syncer, or replication manager in single-node mode)
+# =============================================================================
+ingress:
+  # -- Enable ingress
+  enabled: false
+  # -- Ingress class name
+  className: ""
+  # -- Ingress annotations
+  annotations: {}
+  # Example nginx WebSocket annotations:
+  #   nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+  #   nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+  #   nginx.ingress.kubernetes.io/proxy-http-version: "1.1"
+  #   nginx.ingress.kubernetes.io/upstream-hash-by: "$arg_clientID"
+  #   nginx.ingress.kubernetes.io/configuration-snippet: |
+  #     proxy_set_header Upgrade $http_upgrade;
+  #     proxy_set_header Connection "upgrade";
+  # -- Ingress hosts
+  hosts:
+    - host: zero.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  # -- Ingress TLS configuration
+  tls: []
+  #  - secretName: zero-tls
+  #    hosts:
+  #      - zero.example.com

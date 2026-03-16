@@ -1,0 +1,18 @@
+{{- if .Values.replicationManager.podDisruptionBudget.enabled }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "zero.replicationManager.fullname" . }}
+  labels:
+    {{- include "zero.replicationManager.labels" . | nindent 4 }}
+spec:
+  {{- with .Values.replicationManager.podDisruptionBudget.maxUnavailable }}
+  maxUnavailable: {{ . }}
+  {{- end }}
+  {{- with .Values.replicationManager.podDisruptionBudget.minAvailable }}
+  minAvailable: {{ . }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "zero.replicationManager.selectorLabels" . | nindent 6 }}
+{{- end }}

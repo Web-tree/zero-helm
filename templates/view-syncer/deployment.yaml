@@ -1,0 +1,135 @@
+{{- if .Values.viewSyncer.enabled }}
+apiVersion: apps/v1
+{{- if .Values.viewSyncer.persistence.enabled }}
+kind: StatefulSet
+{{- else }}
+kind: Deployment
+{{- end }}
+metadata:
+  name: {{ include "zero.viewSyncer.fullname" . }}
+  labels:
+    {{- include "zero.viewSyncer.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.viewSyncer.autoscaling.enabled }}
+  replicas: {{ .Values.viewSyncer.replicaCount }}
+  {{- end }}
+  {{- if .Values.viewSyncer.persistence.enabled }}
+  serviceName: {{ include "zero.viewSyncer.fullname" . }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "zero.viewSyncer.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.viewSyncer.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "zero.viewSyncer.labels" . | nindent 8 }}
+        {{- with .Values.viewSyncer.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "zero.serviceAccountName" . }}
+      {{- with .Values.viewSyncer.podSecurityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: zero-view-syncer
+          image: {{ include "zero.image" . }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          {{- with .Values.viewSyncer.securityContext }}
+          securityContext:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          ports:
+            - name: sync
+              containerPort: {{ .Values.viewSyncer.service.port }}
+              protocol: TCP
+          env:
+            {{- include "zero.sharedEnv" . | nindent 12 }}
+            - name: ZERO_REPLICA_FILE
+              value: {{ .Values.viewSyncer.replicaFile | quote }}
+            - name: ZERO_CHANGE_STREAMER_URI
+              value: "http://{{ include "zero.replicationManager.fullname" . }}:{{ .Values.replicationManager.service.port }}"
+            - name: ZERO_PORT
+              value: {{ .Values.viewSyncer.service.port | quote }}
+            {{- if .Values.viewSyncer.numSyncWorkers }}
+            - name: ZERO_NUM_SYNC_WORKERS
+              value: {{ .Values.viewSyncer.numSyncWorkers | quote }}
+            {{- end }}
+            {{- if .Values.viewSyncer.yieldThresholdMs }}
+            - name: ZERO_YIELD_THRESHOLD_MS
+              value: {{ .Values.viewSyncer.yieldThresholdMs | quote }}
+            {{- end }}
+            {{- with .Values.viewSyncer.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+            {{- with .Values.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          {{- with .Values.extraEnvFrom }}
+          envFrom:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.viewSyncer.livenessProbe }}
+          livenessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.viewSyncer.readinessProbe }}
+          readinessProbe:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          {{- with .Values.viewSyncer.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          volumeMounts:
+            - name: data
+              mountPath: /data
+      {{- if not .Values.viewSyncer.persistence.enabled }}
+      volumes:
+        - name: data
+          emptyDir: {}
+      {{- end }}
+      {{- with .Values.viewSyncer.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.viewSyncer.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.viewSyncer.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.viewSyncer.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+  {{- if .Values.viewSyncer.persistence.enabled }}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+        {{- with .Values.viewSyncer.persistence.annotations }}
+        annotations:
+          {{- toYaml . | nindent 10 }}
+        {{- end }}
+      spec:
+        accessModes:
+          {{- toYaml .Values.viewSyncer.persistence.accessModes | nindent 10 }}
+        {{- if .Values.viewSyncer.persistence.storageClass }}
+        storageClassName: {{ .Values.viewSyncer.persistence.storageClass | quote }}
+        {{- end }}
+        resources:
+          requests:
+            storage: {{ .Values.viewSyncer.persistence.size }}
+  {{- end }}
+{{- end }}
