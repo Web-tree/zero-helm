@@ -44,12 +44,20 @@ The chart also supports **single-node mode** where one pod handles both replicat
 - PostgreSQL database with `wal_level=logical`
 - S3-compatible storage (required for multi-node mode)
 
+## Installation
+
+```bash
+helm repo add zero https://web-tree.github.io/zero-helm
+helm repo update
+helm install zero zero/zero
+```
+
 ## Quick Start
 
 ### Single-Node Mode
 
 ```bash
-helm install zero ./zero-helm \
+helm install zero zero/zero \
   --set viewSyncer.enabled=false \
   --set database.upstreamDb="postgresql://user:pass@postgres:5432/mydb" \
   --set adminPassword="your-admin-password"
@@ -58,7 +66,7 @@ helm install zero ./zero-helm \
 ### Multi-Node Mode
 
 ```bash
-helm install zero ./zero-helm \
+helm install zero zero/zero \
   --set database.upstreamDb="postgresql://user:pass@postgres:5432/mydb" \
   --set adminPassword="your-admin-password" \
   --set litestream.backupUrl="s3://my-bucket/zero-replica" \
