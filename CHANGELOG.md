@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.1](https://github.com/Web-tree/zero-helm/compare/zero-0.4.0...zero-0.4.1) (2026-03-16)
+
+
+### Bug Fixes
+
+* remove draft mode to break release loop ([ec97960](https://github.com/Web-tree/zero-helm/commit/ec9796036dae9095cd83d1f7d9f349877ff17fd3))
+
 ## [0.4.0](https://github.com/Web-tree/zero-helm/compare/zero-0.3.0...zero-0.4.0) (2026-03-16)
 
 
