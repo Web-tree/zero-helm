@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.1](https://github.com/Web-tree/zero-helm/compare/zero-0.2.0...zero-0.2.1) (2026-03-16)
+
+
+### Bug Fixes
+
+* use draft releases to allow chart upload before publishing ([ac1fab0](https://github.com/Web-tree/zero-helm/commit/ac1fab0ece7400b402731e21dbefcda7b6819f28))
+
 ## [0.2.0](https://github.com/Web-tree/zero-helm/compare/zero-0.1.0...zero-0.2.0) (2026-03-16)
 
 
