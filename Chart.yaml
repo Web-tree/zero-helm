@@ -2,7 +2,7 @@ apiVersion: v2
 name: zero
 description: A Helm chart for deploying Rocicorp Zero sync engine to Kubernetes
 type: application
-version: 0.1.0
+version: 0.2.0
 appVersion: "0.25.13"
 home: https://zero.rocicorp.dev
 sources:
