@@ -48,39 +48,35 @@ jobs:
       - name: Upload chart to GitHub Release
         run: |
           gh release upload "${{ needs.release-please.outputs.tag_name }}" \
-            .cr-release-packages/*.tgz
+            .cr-release-packages/*.tgz --clobber
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Checkout gh-pages
-        run: |
-          git checkout gh-pages 2>/dev/null || git checkout --orphan gh-pages
-          git rm -rf --ignore-unmatch . 2>/dev/null || true
-          git checkout gh-pages -- index.yaml 2>/dev/null || true
-
-      - name: Download chart from release
-        run: |
-          mkdir -p .cr-release-packages
-          gh release download "${{ needs.release-please.outputs.tag_name }}" \
-            --pattern "*.tgz" --dir .cr-release-packages
+      - name: Publish GitHub Release
+        run: gh release edit "${{ needs.release-please.outputs.tag_name }}" --draft=false
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Update Helm repo index
         run: |
           REPO_URL="https://github.com/${{ github.repository }}/releases/download/${{ needs.release-please.outputs.tag_name }}"
-          if [ -f index.yaml ]; then
-            helm repo index .cr-release-packages --url "$REPO_URL" --merge index.yaml
+          # Fetch existing index from gh-pages if it exists
+          git fetch origin gh-pages:gh-pages 2>/dev/null || true
+          git show gh-pages:index.yaml > existing-index.yaml 2>/dev/null || true
+          if [ -f existing-index.yaml ] && [ -s existing-index.yaml ]; then
+            helm repo index .cr-release-packages --url "$REPO_URL" --merge existing-index.yaml
           else
             helm repo index .cr-release-packages --url "$REPO_URL"
           fi
-          mv .cr-release-packages/index.yaml index.yaml
-          rm -rf .cr-release-packages
+          rm -f existing-index.yaml
 
       - name: Push index to gh-pages
         run: |
+          git checkout gh-pages 2>/dev/null || git checkout --orphan gh-pages
+          git rm -rf --ignore-unmatch . 2>/dev/null || true
+          cp .cr-release-packages/index.yaml index.yaml
+          git add index.yaml
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add index.yaml
           git commit -m "Update Helm repo index for ${{ needs.release-please.outputs.tag_name }}"
           git push origin gh-pages
