@@ -15,7 +15,6 @@ jobs:
     outputs:
       release_created: ${{ steps.release.outputs.release_created }}
       tag_name: ${{ steps.release.outputs.tag_name }}
-      sha: ${{ steps.release.outputs.sha }}
     steps:
       - uses: googleapis/release-please-action@v4
         id: release
@@ -34,7 +33,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ needs.release-please.outputs.sha }}
+          ref: ${{ needs.release-please.outputs.tag_name }}
           fetch-depth: 0
 
       - name: Install Helm
@@ -50,11 +49,6 @@ jobs:
         run: |
           gh release upload "${{ needs.release-please.outputs.tag_name }}" \
             .cr-release-packages/*.tgz --clobber
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Publish GitHub Release
-        run: gh release edit "${{ needs.release-please.outputs.tag_name }}" --draft=false
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
