@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "zero.replicationManager.fullname" . }}
+  labels:
+    {{- include "zero.replicationManager.labels" . | nindent 4 }}
+  {{- with .Values.replicationManager.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.replicationManager.service.type }}
+  clusterIP: None
+  ports:
+    - name: change-streamer
+      port: {{ .Values.replicationManager.service.port }}
+      targetPort: change-streamer
+      protocol: TCP
+    {{- if not .Values.viewSyncer.enabled }}
+    - name: sync
+      port: 4848
+      targetPort: sync
+      protocol: TCP
+    {{- end }}
+  selector:
+    {{- include "zero.replicationManager.selectorLabels" . | nindent 4 }}

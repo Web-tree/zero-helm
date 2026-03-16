@@ -1,0 +1,18 @@
+{{- if and .Values.viewSyncer.enabled .Values.viewSyncer.podDisruptionBudget.enabled }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "zero.viewSyncer.fullname" . }}
+  labels:
+    {{- include "zero.viewSyncer.labels" . | nindent 4 }}
+spec:
+  {{- with .Values.viewSyncer.podDisruptionBudget.maxUnavailable }}
+  maxUnavailable: {{ . }}
+  {{- end }}
+  {{- with .Values.viewSyncer.podDisruptionBudget.minAvailable }}
+  minAvailable: {{ . }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "zero.viewSyncer.selectorLabels" . | nindent 6 }}
+{{- end }}

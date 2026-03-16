@@ -1,0 +1,24 @@
+# Minimal values for CI testing (helm lint / helm template)
+database:
+  upstreamDb: "postgresql://user:password@postgres:5432/zero"
+
+adminPassword: "test-admin-password"
+
+litestream:
+  backupUrl: "s3://test-bucket/zero-replica"
+  aws:
+    accessKeyId: "test-access-key"
+    secretAccessKey: "test-secret-key"
+
+replicationManager:
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+
+viewSyncer:
+  replicaCount: 1
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi

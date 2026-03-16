@@ -1,0 +1,21 @@
+{{- if .Values.viewSyncer.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "zero.viewSyncer.fullname" . }}
+  labels:
+    {{- include "zero.viewSyncer.labels" . | nindent 4 }}
+  {{- with .Values.viewSyncer.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.viewSyncer.service.type }}
+  ports:
+    - name: sync
+      port: {{ .Values.viewSyncer.service.port }}
+      targetPort: sync
+      protocol: TCP
+  selector:
+    {{- include "zero.viewSyncer.selectorLabels" . | nindent 4 }}
+{{- end }}
