@@ -1,0 +1,28 @@
+apiVersion: v1
+entries:
+  zero:
+  - apiVersion: v2
+    appVersion: 0.25.13
+    created: "2026-03-16T22:05:49.516395975Z"
+    description: A Helm chart for deploying Rocicorp Zero sync engine to Kubernetes
+    digest: a7f85545f1d7cbc2a5906a9d87d8114cc3daa5bcfbeab8c4da3389614e5f37ac
+    home: https://zero.rocicorp.dev
+    keywords:
+    - zero
+    - rocicorp
+    - sync
+    - replication
+    - real-time
+    - websocket
+    maintainers:
+    - name: Web-Tree
+      url: https://github.com/Web-tree
+    name: zero
+    sources:
+    - https://github.com/Web-tree/zero-helm
+    - https://github.com/rocicorp/mono/tree/main/packages/zero-cache
+    type: application
+    urls:
+    - https://github.com/Web-tree/zero-helm/releases/download/zero-0.4.0/zero-0.4.0.tgz
+    version: 0.4.0
+generated: "2026-03-16T22:05:49.514390829Z"
